@@ -26,4 +26,3 @@ class IncidentAdmin(admin.ModelAdmin):
 		"time_reported",
 	)
 	list_filter = ("incident_type", "status", "detection_method")
-	search_fields = ("incident_code", "location", "notes")
