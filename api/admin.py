@@ -14,3 +14,16 @@ class CameraAdmin(admin.ModelAdmin):
 	list_display = ("camera_code", "name", "location", "status", "last_active")
 	list_filter = ("status", "location")
 	search_fields = ("camera_code", "name", "location")
+
+
+@admin.register(Incident)
+class IncidentAdmin(admin.ModelAdmin):
+	list_display = (
+		"incident_code",
+		"incident_type",
+		"location",
+		"status",
+		"time_reported",
+	)
+	list_filter = ("incident_type", "status", "detection_method")
+	search_fields = ("incident_code", "location", "notes")
