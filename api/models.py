@@ -112,3 +112,51 @@ class Incident(models.Model):
 
 	def __str__(self):
 		return f"{self.incident_code} ({self.incident_type})"
+
+
+class IoTDevice(models.Model):
+	STATUS_ACTIVE = "active"
+	STATUS_INACTIVE = "inactive"
+	STATUS_MAINTENANCE = "maintenance"
+	STATUS_CHOICES = [
+		(STATUS_ACTIVE, "Active"),
+		(STATUS_INACTIVE, "Inactive"),
+		(STATUS_MAINTENANCE, "Maintenance"),
+	]
+
+	device_id = models.CharField(max_length=50, unique=True)
+	name = models.CharField(max_length=120)
+	location = models.CharField(max_length=160)
+	device_type = models.CharField(max_length=50, default="sensor")  # e.g., "temperature_humidity_gas"
+	status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_ACTIVE)
+	api_key = models.CharField(max_length=255, unique=True)
+	last_reading = models.DateTimeField(null=True, blank=True)
+	created_at = models.DateTimeField(auto_now_add=True)
+	updated_at = models.DateTimeField(auto_now=True)
+
+	class Meta:
+		ordering = ["device_id"]
+
+	def __str__(self):
+		return f"{self.device_id} - {self.name}"
+
+
+class SensorReading(models.Model):
+	device = models.ForeignKey(
+		IoTDevice,
+		on_delete=models.CASCADE,
+		related_name="readings",
+	)
+	temperature = models.FloatField()  # in Celsius
+	humidity = models.FloatField()  # in percentage
+	gas_level = models.FloatField()  # sensor value
+	timestamp = models.DateTimeField(auto_now_add=True)
+
+	class Meta:
+		ordering = ["-timestamp"]
+		indexes = [
+			models.Index(fields=["device", "-timestamp"]),
+		]
+
+	def __str__(self):
+		return f"{self.device.device_id} - {self.timestamp}"
