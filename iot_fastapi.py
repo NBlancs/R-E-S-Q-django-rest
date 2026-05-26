@@ -6,9 +6,9 @@ import os
 import sys
 import django
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
-from fastapi import FastAPI, Header, HTTPException, status
+from fastapi import FastAPI, Header, HTTPException, Response, status
 from pydantic import BaseModel, ConfigDict
 from fastapi.middleware.cors import CORSMiddleware
 from concurrent.futures import ThreadPoolExecutor
@@ -38,6 +38,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Alert thresholds — readings are only persisted when ANY threshold is crossed
+ALERT_TEMP_THRESHOLD = 50.0   # °C
+ALERT_GAS_THRESHOLD = 300.0   # sensor units
+
+
+def is_high_alert(temperature: float, gas_level: float) -> bool:
+    """Return True if any sensor reading exceeds its alert threshold."""
+    return temperature > ALERT_TEMP_THRESHOLD or gas_level > ALERT_GAS_THRESHOLD
 
 
 # Pydantic models for request/response
@@ -108,14 +118,14 @@ async def root():
 
 @app.post(
     "/api/v1/sensor/reading",
-    response_model=SensorDataResponse,
     status_code=status.HTTP_201_CREATED,
     tags=["Sensor"],
 )
 async def submit_sensor_reading(
     data: SensorDataRequest,
+    response: Response,
     x_api_key: str = Header(..., alias="X-API-Key"),
-):
+) -> Any:
     """
     Submit sensor reading data from IoT device.
     
@@ -140,7 +150,18 @@ async def submit_sensor_reading(
     ```
     """
     device = await verify_api_key(x_api_key)
-    
+
+    # Only persist readings that cross an alert threshold
+    if not is_high_alert(data.temperature, data.gas_level):
+        response.status_code = status.HTTP_200_OK
+        return {
+            "saved": False,
+            "detail": "Reading below alert threshold — not stored.",
+            "temperature": data.temperature,
+            "humidity": data.humidity,
+            "gas_level": data.gas_level,
+        }
+
     # Create sensor reading in a thread pool
     def _create_reading():
         reading = SensorReading.objects.create(
@@ -152,10 +173,10 @@ async def submit_sensor_reading(
         device.last_reading = datetime.now()
         device.save(update_fields=["last_reading"])
         return reading
-    
+
     loop = __import__("asyncio").get_event_loop()
     reading = await loop.run_in_executor(executor, _create_reading)
-    
+
     return {
         "id": reading.id,
         "device_id": device.device_id,
