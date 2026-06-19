@@ -1,3 +1,14 @@
+#Eala Update for testing the flow for each rest api: -eala update
+- AuthenticationTests (11 tests)
+- CameraTests (7 tests)
+- IncidentTests (7 tests)
+- SystemOverviewTests (3 tests)
+
+`python manage.py test api.tests` - run tests
+`python manage.py test api.tests -v 2` - verbose
+`python manage.py test api.tests.AuthenticationTests` - run specific tests
+
+
 # RESQ Django Backend (DRF)
 
 Separate backend repository for the R.E.S.Q system, implemented with Django REST Framework.
